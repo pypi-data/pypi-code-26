@@ -1,0 +1,15 @@
+import setuptools
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name='diko-icy-williaml',
+    version='1.0.0',
+    author='williaml',
+    author_email='bonconchimchim@alolo.hoho',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url='http://www.headfirstlab.com',
+    description='nester list',
+)
