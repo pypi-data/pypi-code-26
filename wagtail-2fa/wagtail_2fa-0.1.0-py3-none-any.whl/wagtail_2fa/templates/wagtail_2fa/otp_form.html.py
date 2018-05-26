@@ -1,0 +1,73 @@
+BBBBBBB BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+BBBB BBBBBBBBBBB BBBB
+BBBBB BBBBBBBB gettext(u'Sign in') BBBBBBBB
+BBBBB BBBBBBBBBXXXXXBBBBBBBB
+
+BBBBB BBBBBBBBB
+    
+
+    XXXXX XXXXXXXXXXXXXXXX XXXXXXBBBBBB BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBX XXXXXXXXXXXXXXX XX
+BBBBBBBB
+
+BBBBB BBBBBBBBB
+    XXXX XXXXXXXXXXXXXXXXXXXXXXXX
+        BB BBBBBBBB BB BBBBBBBBBBB
+            XXXX XXXXXXXXXXXXXXXXX
+                XXXX
+                    BB BBBBBBBBBBB
+                        XXX XXXXXXXXXXXXXX gettext(u'Invalid code') SSSSSSS SSSSXXXXX
+                    BBBBB
+                    BBB BBBBBBB BB BBBBBBBB
+                        XXX XXXXXXXXXXXXXX
+                    BBBBBB
+                XXXXX
+            XXXXXX
+        BBBBB
+
+        BBBBB BBBBBBBBBBBBBBBBBBB
+
+        XXXXX XXXXXXXXBBB BBBBBBBBBBBBBBBBBBX XXXXXXXXXXXXX XXXXXXXXXXXXXXXXXX XXXXXXXXXXX
+            BBBBB BBBBBBBBBB
+            BBBBBBBBBB
+
+            BBB BBBBBBBBBBBBBBBBBBB BB BBBBBBBB
+            XXXXXX XXXXXXXXXXXXX XXXXXXXXXXX XXXXXXXFFFFFFFFFFFFFFFFX XX
+
+            XXXXBBBBB BBBBBBBBBBBBBB gettext(u'Enter your two-factor authentication code') BBBBBBBBXXXXX
+
+            XXX XXXXXXXXXXXXXXX
+                BBBBB BBBBBB
+                XXX XXXXXXXXXXXXX
+                    XXXX XXXXXXXXXXXX XXXXXXXXXXX
+                        
+                        XXXX XXXXXXXXXXXX XXXXXXXXXXXXX
+                            
+                        XXXXXX
+                    XXXXXX
+                XXXXX
+
+                BBBBB BBBBBBBBBBBB
+                BBB BBBBBBBBBBB BBBBB BB BBBBBBBBBBBBBBBBBXX
+                XXX XXXXXXXXXXXXX
+                    
+                    XXXX XXXXXXXXXXXX XXXXXXXXXXX
+                        
+                    XXXXXX
+                XXXXX
+                BBBBBB
+                BBBBBBBB BBBBBBBBBBBB
+
+                BBBBBBBB
+                XXX XXXXXXXXXXXXXXX
+                    BBBBB BBBBBBBBBBBBBB
+                    XXXXXXX XXXXXXXXXXXXX XXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXX XXXXXXXXXXXX XXXXXXXXXXXXXXXXXXX gettext(u'Signing in…') XXXXXXX XXXXXXXXXXX XXXXXXXXXXXXXXXXXXXXXXXXX gettext(u'Sign in') XXXXXXXXXXXXXX
+                    BBBBBBBB
+                XXXXX
+            XXXXX
+        BBBBBBBB
+        XXXXXXX
+
+        BBBBB BBBBBBBBBBBBBBBBBBB
+
+    XXXXXX
+BBBBBBBB
