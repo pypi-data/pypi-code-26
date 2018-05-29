@@ -1,0 +1,2 @@
+class VeriteosException(Exception):
+	pass
