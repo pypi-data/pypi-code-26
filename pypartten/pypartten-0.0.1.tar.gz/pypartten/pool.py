@@ -1,0 +1,187 @@
+import abc
+import contextlib
+from typing import (
+    overload,
+    Any
+)
+
+
+class PoolAbc(abc.ABC):
+    """池模式抽象类.
+
+    池是用来统一管理一类对象的对象,
+
+    在池模型中,对象是用来消耗的,空闲的对象放在池中,需要使用时从池子中取出,同时放入_used容器中.
+
+    用好后则需要将_used中的对应的对象释放.
+
+    publish:
+        traget_class (class or factory): 用于生产目标对象的类或者工厂方法,只要返回的是对象即可
+        args (Any): 生成对象的位置参数
+        kwargs (Any): 生成对象的关键字参数
+
+    protected:
+        _pool (collections.deque): 长度限制为maxsize的双端队列,用于保存可用的对象
+        _minsize (int): 允许的最小池大小.
+        _acquiring (int): 捕捉中的对象数量
+        _used (Set[obj]): 使用中的对象
+
+    property:
+        minsize (int): 池对象的最小大小
+        maxsize (int): 池对象的最大大小
+        freesize (int): 池对象当前的可用对象数量
+        size (int): 池对象当前的总长度
+    """
+
+    def __init__(self, traget_class_or_factory: Any, *args, maxsize: int=10, minsize: int=0, **c):
+        """创建一个池对象.
+        
+        Args:
+            traget_class_or_factory (Any): 用于生产目标对象的类或者工厂方法,只要返回的是对象即可
+            maxsize (int, optional): Defaults to 10. 池的大小上限
+            minsize (int, optional): Defaults to 0. 池的大小下限
+            args/kwargs (Any): 用于创建池中对象的参数
+        """
+
+        # 池初始化大小判断参数
+        assert isinstance(minsize, int) and minsize >= 0, (
+            "minsize must be int >= 0", minsize, type(minsize))
+        assert maxsize is not None, "Arbitrary pool size is disallowed."
+        assert isinstance(maxsize, int) and maxsize > 0, (
+            "maxsize must be int > 0", maxsize, type(maxsize))
+        assert minsize <= maxsize, (
+            "Invalid pool min/max sizes", minsize, maxsize)
+        self.traget_class = traget_class_or_factory
+        self.args = args
+        self.kwargs = kwargs
+        self._pool = collections.deque(maxlen=maxsize)
+        self._minsize = minsize
+        self._acquiring = 0
+        self._used = set()
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} [size:[{self.minsize}:{self.maxsize}], free:{self.freesize}]>'
+
+    @property
+    def minsize(self):
+        """Minimum pool size."""
+        return self._minsize
+
+    @property
+    def maxsize(self):
+        """Maximum pool size."""
+        return self._pool.maxlen
+
+    @property
+    def freesize(self):
+        """Current number of free connections."""
+        return len(self._pool)
+
+    @property
+    def size(self):
+        """Current pool size."""
+        return self.freesize + len(self._used) + self._acquiring
+
+    def _fill_free(self, *, override_min: bool):
+        """将池填满."""
+        while self.size < self.minsize:
+            self._acquiring += 1
+            try:
+                obj = self.traget_class(self.args, self.kwargs)
+                self._pool.append(obj)
+            finally:
+                self._acquiring -= 1
+        if self.freesize:
+            return
+        if override_min:
+            while not self._pool and self.size < self.maxsize:
+                self._acquiring += 1
+                try:
+                    obj = self.traget_class(self.args, self.kwargs)
+                    self._pool.append(conn)
+                finally:
+                    self._acquiring -= 1
+
+    @abc.abstractmethod
+    def acquire(self):
+        """获取一个对象."""
+        while True:
+            self._fill_free(override_min=True)
+            obj = self._pool.popleft()
+            assert obj not in self._used, f"object {obj} is already uesd"
+            self._used.add(conn)
+            return obj
+
+    @abc.abstractmethod
+    def release(self, obj):
+        """将对象从池中释放."""
+        assert conn in self._used, f"object {obj} not in this pool"
+        self._used.remove(conn)
+
+    @abc.abstractmethod
+    @contextlib.contextmanager
+    def open(self):
+        """使用上下文管理池子.
+        
+        从池子中取出一个对象,在上下文中用好后将对象释放
+        
+        """
+        obj = self.acquire()
+        yield obj
+        self.release(obj)
+
+
+
+class SimplePool(PoolAbc):
+    """简易池类.
+
+    池是用来统一管理一类对象的对象,
+
+    在池模型中,对象是用来消耗的,空闲的对象放在池中,需要使用时从池子中取出,同时放入_used容器中.
+
+    用好后则需要将_used中的对应的对象释放.
+
+    publish:
+        traget_class (class or factory): 用于生产目标对象的类或者工厂方法,只要返回的是对象即可
+        args (Any): 生成对象的位置参数
+        kwargs (Any): 生成对象的关键字参数
+
+    property:
+        minsize (int): 池对象的最小大小
+        maxsize (int): 池对象的最大大小
+        freesize (int): 池对象当前的可用对象数量
+        size (int): 池对象当前的总长度
+    """
+    @overload
+    def acquire(self):
+        """获取一个对象."""
+        return super().acquire()
+        
+
+    @overload
+    def release(self, obj):
+        """将对象从池中释放."""
+
+        assert conn in self._used, f"object {obj} not in this pool"
+        self._used.remove(conn)
+
+
+
+
+class _ConnectionContextManager:
+
+    __slots__ = ('_pool', '_conn')
+
+    def __init__(self, pool, conn):
+        self._pool = pool
+        self._conn = conn
+
+    def __enter__(self):
+        return self._conn
+
+    def __exit__(self, exc_type, exc_value, tb):
+        try:
+            self._pool.release(self._conn)
+        finally:
+            self._pool = None
+            self._conn = None
