@@ -1,0 +1,104 @@
+# Copyright (c) 2018, Combine Control Systems AB
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Combine Control Systems AB nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.
+# IN NO EVENT SHALL COMBINE CONTROL SYSTEMS AB BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+from __future__ import (print_function, division, unicode_literals,
+                        absolute_import)
+import numpy as np
+
+from sympathy.api import node
+from sympathy.api.exceptions import SyDataError
+from sympathy.api.nodeconfig import Port, Ports, Tag, Tags, adjust
+
+
+class IndexTable(node.Node):
+    name = 'Index table'
+    description = (
+        'Uses index-table to perform row indexation from value-table.\n'
+        'No other datatypes than integer or boolean are allowed in the index '
+        'column')
+    author = 'Mathias Broxvall'
+    copyright = '(C) 2018 Combine Control Systems AB'
+    version = '0.1'
+    icon = 'lookup.svg'
+
+    nodeid = 'org.sysess.sympathy.data.table.indextable'
+    tags = Tags(Tag.DataProcessing.TransformStructure)
+
+    inputs = Ports([
+        Port.Table('Value table', name='value'),
+        Port.Table('Index table', name='index')
+    ])
+    outputs = Ports([
+        Port.Table('Result table', name='out')
+    ])
+
+    editor = node.Util.list_editor(filter=True, edit=True)
+
+    parameters = node.parameters()
+    parameters.set_list(
+        'index column', label='Select indexing column',
+        description='Select column used for indexing.',
+        value=[], editor=editor)
+    parameters.set_boolean(
+        'at_one', label='Start at one',
+        description='Start indexing at one, otherwise at zero',
+        value=False, editor=editor)
+    parameters.set_list(
+                'operation', label='Operation',
+                list=['Include', 'Exclude'], value=[0],
+                description='If to include or exclude rows',
+                editor=node.Util.combo_editor().value())
+
+    def execute(self, node_context):
+        index_tbl = node_context.input['index']
+        value_tbl = node_context.input['value']
+        out_tbl = node_context.output['out']
+        at_one = node_context.parameters['at_one'].value
+        exclude = node_context.parameters['operation'].value == [1]
+
+        index_index = node_context.parameters['index column'].value
+        try:
+            indices = index_tbl.cols()[index_index[0]].data
+        except IndexError:
+            raise SyDataError('Invalid column selection for index')
+        indices = indices - at_one
+
+        if (not np.issubdtype(indices.dtype, np.int)
+            and np.issubdtype(indices.dtype, np.bool)):
+            raise SyDataError('Invalid datatype {} in index column'
+                              .format(indices.dtype))
+
+        for col in value_tbl.cols():
+            if exclude:
+                mask=np.ones(col.data.shape[0], dtype=bool)
+                mask[indices] = False
+                out_tbl.set_column_from_array(col.name, col.data[mask])
+            else :
+                out_tbl.set_column_from_array(col.name, col.data[indices])
+
+    def adjust_parameters(self, node_context):
+        adjust(node_context.parameters['index column'],
+               node_context.input['index'])
