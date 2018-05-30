@@ -1,0 +1,5 @@
+'''
+PlugSy - PluginTemplate Config
+'''
+
+DEPENDENCIES = []
