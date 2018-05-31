@@ -1,0 +1,1 @@
+from xoc_utils.Singleton import Singleton
