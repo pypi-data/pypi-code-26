@@ -1,0 +1,2 @@
+class ResponsysClientError(Exception):
+    pass
