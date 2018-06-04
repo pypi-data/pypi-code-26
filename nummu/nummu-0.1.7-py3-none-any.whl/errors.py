@@ -1,0 +1,2 @@
+class NummuError(Exception):
+    pass
