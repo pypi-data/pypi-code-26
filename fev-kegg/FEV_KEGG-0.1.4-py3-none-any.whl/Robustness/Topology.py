@@ -1,0 +1,1 @@
+#TODO: zweistufiges Verfahren implementieren, allgemein für Kanten/knoten, nicht nur für neofunktionalisierte
