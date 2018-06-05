@@ -1,0 +1,70 @@
+# -*- coding: utf-8 -*-
+
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+class Ui_WInspect(object):
+    def setupUi(self, WInspect):
+        WInspect.setObjectName("WInspect")
+        WInspect.resize(1004, 758)
+        WInspect.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
+        self.centralwidget = QtWidgets.QWidget(WInspect)
+        self.centralwidget.setObjectName("centralwidget")
+        WInspect.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(WInspect)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1004, 49))
+        self.menubar.setObjectName("menubar")
+        self.menu_File = QtWidgets.QMenu(self.menubar)
+        self.menu_File.setObjectName("menu_File")
+        self.menu_View = QtWidgets.QMenu(self.menubar)
+        self.menu_View.setObjectName("menu_View")
+        WInspect.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(WInspect)
+        self.statusbar.setObjectName("statusbar")
+        WInspect.setStatusBar(self.statusbar)
+        self.toolBar = QtWidgets.QToolBar(WInspect)
+        self.toolBar.setObjectName("toolBar")
+        WInspect.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+        self.actionOpenDirectory = QtWidgets.QAction(WInspect)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/folder"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionOpenDirectory.setIcon(icon)
+        self.actionOpenDirectory.setObjectName("actionOpenDirectory")
+        self.actionRun = QtWidgets.QAction(WInspect)
+        self.actionRun.setCheckable(True)
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap(":/run"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap(":/stop"), QtGui.QIcon.Normal, QtGui.QIcon.On)
+        self.actionRun.setIcon(icon1)
+        self.actionRun.setObjectName("actionRun")
+        self.actionROI = QtWidgets.QAction(WInspect)
+        self.actionROI.setCheckable(True)
+        icon2 = QtGui.QIcon()
+        icon2.addPixmap(QtGui.QPixmap(":/roi"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.actionROI.setIcon(icon2)
+        self.actionROI.setObjectName("actionROI")
+        self.menu_File.addAction(self.actionOpenDirectory)
+        self.menu_View.addAction(self.actionRun)
+        self.menu_View.addAction(self.actionROI)
+        self.menubar.addAction(self.menu_File.menuAction())
+        self.menubar.addAction(self.menu_View.menuAction())
+        self.toolBar.addAction(self.actionOpenDirectory)
+        self.toolBar.addAction(self.actionROI)
+        self.toolBar.addAction(self.actionRun)
+
+        self.retranslateUi(WInspect)
+        QtCore.QMetaObject.connectSlotsByName(WInspect)
+
+    def retranslateUi(self, WInspect):
+        _translate = QtCore.QCoreApplication.translate
+        WInspect.setWindowTitle(_translate("WInspect", "Inspecteur du travail"))
+        self.menu_File.setTitle(_translate("WInspect", "&File"))
+        self.menu_View.setTitle(_translate("WInspect", "&View"))
+        self.toolBar.setWindowTitle(_translate("WInspect", "toolBar"))
+        self.actionOpenDirectory.setText(_translate("WInspect", "&Open directory..."))
+        self.actionOpenDirectory.setShortcut(_translate("WInspect", "Ctrl+O"))
+        self.actionRun.setText(_translate("WInspect", "&Run"))
+        self.actionRun.setShortcut(_translate("WInspect", "Ctrl+R"))
+        self.actionROI.setText(_translate("WInspect", "R&OI"))
+
+from . import resources_rc
