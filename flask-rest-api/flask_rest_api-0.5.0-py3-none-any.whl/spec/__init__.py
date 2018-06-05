@@ -1,0 +1,152 @@
+"""API specification using Open API"""
+
+import json
+
+import flask
+from flask import current_app
+import apispec
+from apispec.ext.marshmallow.swagger import map_to_swagger_type
+
+from .plugin import CONVERTER_MAPPING
+
+
+PLUGINS = (
+    'flask_rest_api.spec.plugin',
+    # XXX: Ideally, we shouldn't register schema_path_helper but it's
+    # hard to extract only what we want from apispec.ext.marshmallow
+    'apispec.ext.marshmallow',
+)
+
+
+def _add_leading_slash(string):
+    """Add leading slash to a string if there is None"""
+    return string if string[0] == '/' else '/' + string
+
+
+class APISpec(apispec.APISpec):
+    """API specification class
+
+    :param Flask app: Flask application
+    """
+
+    def __init__(self, app=None):
+        # We need to pass title and version as they are positional parameters
+        # Those values are replaced in init_app
+        super().__init__(title='OpenAPI spec', version='1', plugins=PLUGINS)
+        self._app = app
+        if app is not None:
+            self.init_app(app)
+
+    def init_app(self, app):
+        """Initialize ApiSpec with application"""
+
+        self._app = app
+
+        # API info from app
+        self.info['title'] = app.name
+        self.info['version'] = app.config.get('API_VERSION', '1')
+
+        # Add routes to json spec file and spec UI (ReDoc)
+        api_url = app.config.get('OPENAPI_URL_PREFIX', None)
+        if api_url:
+            # TODO: Remove this when dropping Flask < 1.0 compatibility
+            # Strip single trailing slash (flask.Blueprint does it from v1.0)
+            if api_url and api_url[-1] == '/':
+                api_url = api_url[:-1]
+            blueprint = flask.Blueprint(
+                'api-docs',
+                __name__,
+                url_prefix=_add_leading_slash(api_url),
+                template_folder='./templates',
+            )
+            # Serve json spec at 'url_prefix/openapi.json' by default
+            json_url = app.config.get('OPENAPI_JSON_PATH', '/openapi.json')
+            blueprint.add_url_rule(
+                _add_leading_slash(json_url),
+                endpoint='openapi_json',
+                view_func=self._openapi_json)
+            # Serve ReDoc only if path specified
+            redoc_url = app.config.get('OPENAPI_REDOC_PATH', None)
+            if redoc_url:
+                blueprint.add_url_rule(
+                    _add_leading_slash(redoc_url),
+                    endpoint='openapi_redoc',
+                    view_func=self._openapi_redoc)
+            app.register_blueprint(blueprint)
+
+    def _openapi_json(self):
+        """Serve JSON spec file"""
+        # We don't use Flask.jsonify here as it would sort the keys
+        # alphabetically while we want to preserve the order.
+        return current_app.response_class(
+            json.dumps(self.to_dict(), indent=2),
+            mimetype='application/json')
+
+    def _openapi_redoc(self):
+        """Expose OpenAPI spec with ReDoc
+
+        The Redoc script URL can be specified using OPENAPI_REDOC_URL.
+        By default, a CDN script is used. When using a CDN script, the
+        version can (and should) be specified using OPENAPI_REDOC_VERSION,
+        otherwise, 'latest' is used.
+        OPENAPI_REDOC_VERSION is ignored when OPENAPI_REDOC_URL is passed.
+        """
+        redoc_url = self._app.config.get('OPENAPI_REDOC_URL', None)
+        if redoc_url is None:
+            redoc_version = self._app.config.get(
+                'OPENAPI_REDOC_VERSION', 'latest')
+            redoc_url = ('https://rebilly.github.io/ReDoc/releases/'
+                         '{}/redoc.min.js'.format(redoc_version))
+        return flask.render_template(
+            'redoc.html', title=self._app.name, redoc_url=redoc_url)
+
+    @staticmethod
+    def register_converter(converter, conv_type, conv_format=None):
+        """Register custom path parameter converter
+
+        :param BaseConverter converter: Converter.
+            Subclass of werkzeug's BaseConverter
+        :param str conv_type: Parameter type
+        :param str conv_format: Parameter format (optional)
+
+        Example: ::
+
+            app.url_map.converters['uuid'] = UUIDConverter
+            api.spec.register_converter(UUIDConverter, 'string', 'UUID')
+
+            @blp.route('/pets/{uuid:pet_id}')
+            ...
+
+            api.register_blueprint(blp)
+
+        Once the converter is registered, all paths using it will have their
+        path parameter documented with the right type and format.
+        """
+        CONVERTER_MAPPING[converter] = (conv_type, conv_format)
+
+    @staticmethod
+    def register_field(field, *args):
+        """Register custom Marshmallow field
+
+        Registering the Field class allows the Schema parser to set the proper
+        type and format when documenting parameters from Schema fields.
+
+        :param Field field: Marshmallow Field class
+
+        ``*args`` can be:
+
+        - a pair of the form ``(type, format)`` to map to
+        - a core marshmallow field type (then that type's mapping is used)
+
+        Examples: ::
+
+            # Map to ('string, 'UUID')
+            api.spec.register_field(UUIDField, 'string', 'UUID')
+
+            # Map to ('integer, 'int32')
+            api.spec.register_field(CustomIntegerField, ma.fields.Integer)
+
+        In the first case, if the second element of the tuple is None, it does
+        not appear in the spec.
+        """
+        map_to_swagger_type(*args)(field)
