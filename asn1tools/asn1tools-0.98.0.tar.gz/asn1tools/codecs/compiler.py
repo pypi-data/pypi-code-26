@@ -1,0 +1,513 @@
+"""Base Compiler class used by all codecs.
+
+"""
+
+from copy import copy
+from copy import deepcopy
+from ..errors import CompileError
+from ..parser import EXTENSION_MARKER
+
+
+def flatten(dlist):
+    flist = []
+
+    for item in dlist:
+        if isinstance(item, list):
+            flist.extend(item)
+        else:
+            flist.append(item)
+
+    return flist
+
+
+def is_object_class_type_name(type_name):
+    return '&' in type_name
+
+
+class CompiledType(object):
+
+    def __init__(self, constraints):
+        self._constraints = constraints
+
+    def check_constraints(self, data):
+        self._constraints.check(data)
+
+
+class Recursive(object):
+    pass
+
+
+class Constraints(object):
+
+    def check(self, data):
+        raise NotImplementedError('Constraints check is not yet implemented.')
+
+
+class Compiler(object):
+
+    def __init__(self, specification):
+        self._specification = specification
+        self._types_backtrace = []
+        self.recursive_types = []
+        self.compiled = {}
+
+    def types_backtrace_push(self, type_name):
+        self._types_backtrace.append(type_name)
+
+    def types_backtrace_pop(self):
+        self._types_backtrace.pop()
+
+    @property
+    def types_backtrace(self):
+        return self._types_backtrace
+
+    def process(self):
+        self.pre_process()
+
+        compiled = {}
+
+        for module_name in self._specification:
+            items = self._specification[module_name]['types'].items()
+
+            for type_name, type_descriptor in items:
+                self.types_backtrace_push(type_name)
+                compiled_type = self.process_type(type_name,
+                                                  type_descriptor,
+                                                  module_name)
+                self.types_backtrace_pop()
+
+                if module_name not in compiled:
+                    compiled[module_name] = {}
+
+                compiled[module_name][type_name] = compiled_type
+
+        for recursive_type in self.recursive_types:
+            compiled_module = compiled[recursive_type.module_name]
+            inner_type = compiled_module[recursive_type.type_name].type
+            recursive_type.set_inner_type(inner_type)
+
+        return compiled
+
+    def pre_process(self):
+        for module_name in self._specification:
+            module = self._specification[module_name]
+
+            self.pre_process_components_of(module, module_name)
+
+            if module['extensibility-implied']:
+                self.pre_process_extensibility_implied(module)
+
+            self.pre_process_tags(module, module_name)
+
+        return self._specification
+
+    def pre_process_components_of(self, module, module_name):
+        for type_descriptor in module['types'].values():
+            self.pre_process_components_of_type(type_descriptor,
+                                                module_name)
+
+    def pre_process_components_of_type(self, type_descriptor, module_name):
+        type_name = type_descriptor['type']
+
+        if type_name in ['SEQUENCE', 'SET', 'CHOICE']:
+            type_descriptor['members'] = self.pre_process_components_of_expand_members(
+                type_descriptor['members'],
+                module_name)
+
+    def pre_process_components_of_expand_members(self, members, module_name):
+        expanded_members = []
+
+        for member in members:
+            if member != EXTENSION_MARKER and 'components-of' in member:
+                type_descriptor, inner_module_name = self.lookup_type_descriptor(
+                    member['components-of'],
+                    module_name)
+                inner_members = self.pre_process_components_of_expand_members(
+                    type_descriptor['members'],
+                    inner_module_name)
+
+                for inner_member in inner_members:
+                    if inner_member == EXTENSION_MARKER:
+                        break
+
+                    expanded_members.append(deepcopy(inner_member))
+            else:
+                expanded_members.append(member)
+
+        return expanded_members
+
+    def pre_process_extensibility_implied(self, module):
+        for type_descriptor in module['types'].values():
+            self.pre_process_extensibility_implied_type(type_descriptor)
+
+    def pre_process_extensibility_implied_type(self, type_descriptor):
+        type_name = type_descriptor['type']
+
+        if type_name in ['SEQUENCE', 'SET', 'CHOICE']:
+            members = type_descriptor['members']
+
+            for member in members:
+                if member == EXTENSION_MARKER or isinstance(member, list):
+                    continue
+
+                self.pre_process_extensibility_implied_type(member)
+
+            if EXTENSION_MARKER not in members:
+                members.append(EXTENSION_MARKER)
+
+    def pre_process_tags(self, module, module_name):
+        module_tags = module.get('tags', 'EXPLICIT')
+
+        for type_descriptor in module['types'].values():
+            self.pre_process_tags_type(type_descriptor,
+                                       module_tags,
+                                       module_name)
+
+    def pre_process_tags_type(self,
+                              type_descriptor,
+                              module_tags,
+                              module_name):
+        type_name = type_descriptor['type']
+
+        if 'tag' in type_descriptor:
+            tag = type_descriptor['tag']
+            resolved_type_name = self.resolve_type_name(type_name, module_name)
+
+            if 'kind' not in tag:
+                if resolved_type_name == 'CHOICE':
+                    tag['kind'] = 'EXPLICIT'
+                elif module_tags in ['IMPLICIT', 'EXPLICIT']:
+                    tag['kind'] = module_tags
+                else:
+                    tag['kind'] = 'IMPLICIT'
+
+        if type_name in ['SEQUENCE', 'SET', 'CHOICE']:
+            self.pre_process_tags_type_members(type_descriptor,
+                                               module_tags,
+                                               module_name)
+
+        if type_name in ['SEQUENCE OF', 'SET OF']:
+            self.pre_process_tags_type(type_descriptor['element'],
+                                       module_tags,
+                                       module_name)
+
+    def pre_process_tags_type_members(self,
+                                      type_descriptor,
+                                      module_tags,
+                                      module_name):
+        def is_any_member_tagged(members):
+            for member in members:
+                if member == EXTENSION_MARKER:
+                    continue
+
+                if 'tag' in member:
+                    return True
+
+            return False
+
+        number = None
+        members = flatten(type_descriptor['members'])
+
+        # Add tag number to all members if AUTOMATIC TAGS are
+        # selected and no member is tagged.
+        if module_tags == 'AUTOMATIC' and not is_any_member_tagged(members):
+            number = 0
+
+        for member in members:
+            if member == EXTENSION_MARKER:
+                continue
+
+            if number is not None:
+                if 'tag' not in member:
+                    member['tag'] = {}
+
+                member['tag']['number'] = number
+                number += 1
+
+            self.pre_process_tags_type(member,
+                                       module_tags,
+                                       module_name)
+
+    def resolve_type_name(self, type_name, module_name):
+        try:
+            while True:
+                if is_object_class_type_name(type_name):
+                    type_name, module_name = self.lookup_object_class_type_name(
+                        type_name,
+                        module_name)
+                else:
+                    type_descriptor, module_name = self.lookup_type_descriptor(
+                        type_name,
+                        module_name)
+                    type_name = type_descriptor['type']
+        except CompileError:
+            pass
+
+        return type_name
+
+    def process_type(self, type_name, type_descriptor, module_name):
+        return NotImplementedError('To be implemented by subclasses.')
+
+    def compile_type(self, name, type_descriptor, module_name):
+        return NotImplementedError('To be implemented by subclasses.')
+
+    def compile_user_type(self, name, type_name, module_name):
+        compiled = self.get_compiled_type(name,
+                                          type_name,
+                                          module_name)
+
+        if compiled is None:
+            self.types_backtrace_push(type_name)
+            compiled = self.compile_type(
+                name,
+                *self.lookup_type_descriptor(
+                    type_name,
+                    module_name))
+            self.types_backtrace_pop()
+            self.set_compiled_type(name,
+                                   type_name,
+                                   module_name,
+                                   compiled)
+
+        return compiled
+
+    def compile_constraints(self,
+                            type_name,
+                            type_descriptor,
+                            module_name):
+        return Constraints()
+
+    def compile_members(self, members, module_name):
+        compiled_members = []
+
+        for member in members:
+            if member == EXTENSION_MARKER:
+                continue
+
+            if isinstance(member, list):
+                compiled_members.extend(self.compile_members(member,
+                                                             module_name))
+                continue
+
+            compiled_member = self.compile_member(member, module_name)
+            compiled_members.append(compiled_member)
+
+        return compiled_members
+
+    def compile_root_member(self, member, module_name, compiled_members):
+        compiled_member = self.compile_member(member,
+                                              module_name)
+        compiled_members.append(compiled_member)
+
+    def compile_member(self, member, module_name):
+        if is_object_class_type_name(member['type']):
+            member, class_module_name = self.convert_object_class_type_descriptor(
+                member,
+                module_name)
+            compiled_member = self.compile_type(member['name'],
+                                                member,
+                                                class_module_name)
+        else:
+            compiled_member = self.compile_type(member['name'],
+                                                member,
+                                                module_name)
+
+        if 'optional' in member:
+            compiled_member = self.copy(compiled_member)
+            compiled_member.optional = member['optional']
+
+        if 'default' in member:
+            compiled_member = self.copy(compiled_member)
+            compiled_member.default = member['default']
+
+        if 'size' in member:
+            compiled_member = self.copy(compiled_member)
+            compiled_member.set_size_range(*self.get_size_range(member,
+                                                                module_name))
+
+        if 'table' in member:
+            # print('table:', member['table'])
+            pass
+
+        return compiled_member
+
+    def get_size_range(self, type_descriptor, module_name):
+        """Returns a tuple of the minimum and maximum values allowed according
+        the the ASN.1 specification SIZE parameter. Returns (None,
+        None, None) if the type does not have a SIZE parameter.
+
+        """
+
+        size = type_descriptor.get('size', None)
+
+        if size is None:
+            minimum = None
+            maximum = None
+            has_extension_marker = None
+        else:
+            if isinstance(size[0], tuple):
+                minimum, maximum = size[0]
+            else:
+                minimum = size[0]
+                maximum = size[0]
+
+            has_extension_marker = (EXTENSION_MARKER in size)
+
+        if isinstance(minimum, str):
+            if minimum != 'MIN':
+                minimum = self.lookup_value(minimum, module_name)[0]['value']
+
+        if isinstance(maximum, str):
+            if maximum != 'MAX':
+                maximum = self.lookup_value(maximum, module_name)[0]['value']
+
+        return minimum, maximum, has_extension_marker
+
+    def get_restricted_to_range(self, type_descriptor, module_name):
+        restricted_to = type_descriptor['restricted-to']
+
+        if isinstance(restricted_to[0], tuple):
+            minimum, maximum = restricted_to[0]
+        else:
+            minimum = restricted_to[0]
+            maximum = restricted_to[0]
+
+        if isinstance(minimum, str):
+            try:
+                minimum = float(minimum)
+            except ValueError:
+                if minimum not in ['TRUE', 'FALSE']:
+                    minimum = self.lookup_value(minimum, module_name)[0]['value']
+
+        if isinstance(maximum, str):
+            try:
+                maximum = float(maximum)
+            except ValueError:
+                if maximum not in ['TRUE', 'FALSE']:
+                    maximum = self.lookup_value(maximum, module_name)[0]['value']
+
+        has_extension_marker = (EXTENSION_MARKER in restricted_to)
+
+        return minimum, maximum, has_extension_marker
+
+    def is_explicit_tag(self, type_descriptor):
+        try:
+            return type_descriptor['tag']['kind'] == 'EXPLICIT'
+        except KeyError:
+            pass
+
+        return False
+
+    def lookup_in_modules(self, section, debug_string, name, module_name):
+        begin_debug_string = debug_string[:1].upper() + debug_string[1:]
+        module = self._specification[module_name]
+        value = None
+
+        if name in module[section]:
+            value = module[section][name]
+        else:
+            for from_module_name, imports in module['imports'].items():
+                if name in imports:
+                    try:
+                        from_module = self._specification[from_module_name]
+                    except KeyError:
+                        raise CompileError(
+                            "Module '{}' cannot import {} '{}' from missing "
+                            "module '{}'.".format(module_name,
+                                                  debug_string,
+                                                  name,
+                                                  from_module_name))
+
+                    try:
+                        value = from_module[section][name]
+                    except KeyError:
+                        raise CompileError(
+                            "{} '{}' imported by module '{}' not found in "
+                            "module '{}'.".format(begin_debug_string,
+                                                  name,
+                                                  module_name,
+                                                  from_module_name))
+
+                    module_name = from_module_name
+                    break
+
+        if value is None:
+            raise CompileError("{} '{}' not found in module '{}'.".format(
+                begin_debug_string,
+                name,
+                module_name))
+
+        return value, module_name
+
+    def lookup_type_descriptor(self, type_name, module_name):
+        return self.lookup_in_modules('types', 'type', type_name, module_name)
+
+    def lookup_value(self, value_name, module_name):
+        return self.lookup_in_modules('values', 'value', value_name, module_name)
+
+    def lookup_object_class_descriptor(self, object_class_name, module_name):
+        return self.lookup_in_modules('object-classes',
+                                      'object class',
+                                      object_class_name,
+                                      module_name)
+
+    def lookup_object_class_type_name(self, type_name, module_name):
+        class_name, member_name = type_name.split('.')
+        result = self.lookup_object_class_descriptor(class_name,
+                                                     module_name)
+        object_class_descriptor, module_name = result
+
+        for member in object_class_descriptor['members']:
+            if member['name'] == member_name:
+                return member['type'], module_name
+
+    def get_compiled_type(self, name, type_name, module_name):
+        try:
+            return self.compiled[module_name][type_name][name]
+        except KeyError:
+            return None
+
+    def set_compiled_type(self, name, type_name, module_name, compiled):
+        if module_name not in self.compiled:
+            self.compiled[module_name] = {}
+
+        if type_name not in self.compiled[module_name]:
+            self.compiled[module_name][type_name] = {}
+
+        self.compiled[module_name][type_name][name] = compiled
+
+    def convert_object_class_type_descriptor(self, type_descriptor, module_name):
+        type_name, module_name = self.lookup_object_class_type_name(
+            type_descriptor['type'],
+            module_name)
+        type_descriptor = deepcopy(type_descriptor)
+        type_descriptor['type'] = type_name
+
+        return type_descriptor, module_name
+
+    def copy(self, compiled_type):
+        if not isinstance(compiled_type, Recursive):
+            compiled_type = copy(compiled_type)
+
+        return compiled_type
+
+
+def enum_values_as_dict(values):
+    return {
+        value[1]: value[0]
+        for value in values
+        if value != EXTENSION_MARKER
+    }
+
+
+def enum_values_split(values):
+    if EXTENSION_MARKER in values:
+        index = values.index(EXTENSION_MARKER)
+
+        return values[:index], values[index + 1:]
+    else:
+        return values, None
+
+
+def pre_process(specification):
+    return Compiler(specification).pre_process()
