@@ -1,0 +1,21 @@
+from pymongo import MongoClient
+
+class MongoSocial(object):
+    def __init__(self, host, port, db):
+        self.host       = host
+        self.port       = port
+        self.db         = db
+
+        self.client     = None
+        self.connection = None
+        self.connect()
+
+    def connect(self):
+        self.client     = MongoClient(self.host, self.port)
+        self.connection = self.client[self.db]
+
+
+    def write_social_reccomendations(self, user_id, reccomendations):
+        selected_collection = self.connection['Social']
+        result = selected_collection.update({"_id": user_id},reccomendations,upsert=True)
+        return result
