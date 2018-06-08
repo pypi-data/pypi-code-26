@@ -1,0 +1,18 @@
+import setuptools
+
+
+setuptools.setup(
+    name="livedataframe",
+    version="0.0.13",
+    author="Chris Dimoff",
+    author_email="chris@livedataframe.com",
+    description="Client for the LiveDataFrame analysis tool",
+    install_requires = ['requests', 'pandas'],
+    url="http://www.livedataframe.com",
+    packages=setuptools.find_packages(),
+    classifiers=(
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ),
+)
