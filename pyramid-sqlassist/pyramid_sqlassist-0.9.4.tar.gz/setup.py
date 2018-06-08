@@ -1,0 +1,45 @@
+"""pyramid_sqlassist installation script.
+"""
+import os
+import re
+
+from setuptools import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+README = open(os.path.join(here, "README.md")).read()
+README = README.split("\n\n", 1)[0] + "\n"
+
+# store version in the init.py
+with open(
+        os.path.join(
+            os.path.dirname(__file__),
+            'pyramid_sqlassist', '__init__.py')) as v_file:
+    VERSION = re.compile(
+        r".*__VERSION__ = '(.*?)'",
+        re.S).match(v_file.read()).group(1)
+
+requires = ['SQLAlchemy>=0.9.0',
+            'pyramid',
+            ]
+
+setup(
+    name="pyramid_sqlassist",
+    version=VERSION,
+    description="Efficiently manage multiple SqlAlchemy connections for Pyramid",
+    long_description=README,
+    classifiers=[
+        "Intended Audience :: Developers",
+        "Framework :: Pyramid",
+        "Programming Language :: Python",
+        "License :: OSI Approved :: MIT License",
+    ],
+    keywords="web pyramid sqlalchemy",
+    packages=['pyramid_sqlassist'],
+    author="Jonathan Vanasco",
+    author_email="jonathan@findmeon.com",
+    url="https://github.com/jvanasco/pyramid_sqlassist",
+    license="MIT",
+    zip_safe=False,
+    install_requires = requires,
+    test_suite="tests",
+)
