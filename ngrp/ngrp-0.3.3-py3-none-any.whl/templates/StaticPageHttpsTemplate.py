@@ -1,0 +1,33 @@
+from ngrp.templates.Template import Template
+
+
+class StaticPageHttpsTemplate(Template):
+    """\
+    server {
+        listen 80;
+        server_name <domain>;
+
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443;
+        server_name <domain>;
+
+        ssl_certificate <certificate>;
+        ssl_certificate_key <key>;
+
+        ssl on;
+        ssl_session_cache builtin:1000 shared:SSL:10m;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
+        ssl_prefer_server_ciphers on;
+
+        root <website_root>;
+        index index.html index.htm;
+
+        location / {
+                try_files $uri $uri/ =404;
+        }
+    }
+    """

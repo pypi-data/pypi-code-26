@@ -1,0 +1,5 @@
+from ngrp.templates.Template import Template
+from ngrp.templates.HttpReverseProxyTemplate import HttpReverseProxyTemplate
+from ngrp.templates.HttpsReverseProxyTemplate import HttpsReverseProxyTemplate
+from ngrp.templates.StaticPageHttpTemplate import StaticPageHttpTemplate
+from ngrp.templates.StaticPageHttpsTemplate import StaticPageHttpsTemplate
