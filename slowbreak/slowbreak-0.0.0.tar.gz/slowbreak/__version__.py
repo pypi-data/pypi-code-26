@@ -1,0 +1,8 @@
+__title__ = 'slowbreak'
+__description__ = 'Library to interact with FIX servers'
+__url__ = 'https://bitbucket.org/aurelito/slowbreak/'
+__version__ = '0.0.0'
+__author__ = 'Aureliano Calvo'
+__author_email__ = 'aurelianocalvo@gmail.com'
+__license__ = 'MIT'
+__copyright__ = 'Copyright 2018 Aureliano Calvo'
