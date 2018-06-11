@@ -1,0 +1,3 @@
+import os
+
+procpath = os.path.dirname(os.path.abspath( __file__ ))
