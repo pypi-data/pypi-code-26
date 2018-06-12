@@ -1,0 +1,44 @@
+from .mapping import Indexable
+from .registry import register
+from .utils import import_class
+from django.apps import AppConfig, apps
+from django.conf import settings
+import importlib
+import inspect
+import logging
+
+logger = logging.getLogger(__name__)
+
+class SeekerConfig (AppConfig):
+    name = 'seeker'
+
+    def ready(self):
+        mapping_module = getattr(settings, 'SEEKER_MAPPING_MODULE', 'mappings')
+        mappings = getattr(settings, 'SEEKER_MAPPINGS', [])
+        module_only = getattr(settings, 'SEEKER_MODULE_ONLY', True)
+        if mappings:
+            # Keep a mapping of app module to app label (project.app.subapp -> subapp)
+            app_lkup = {app.name: app.label for app in apps.get_app_configs()}
+            for mapping in mappings:
+                mapping_cls = import_class(mapping)
+                # Figure out which app_label to use based on the longest matching module prefix.
+                app_label = None
+                for prefix in sorted(app_lkup):
+                    if mapping.startswith(prefix):
+                        app_label = app_lkup[prefix]
+                register(mapping_cls, app_label=app_label)
+        else:
+            if not mapping_module:
+                return
+            for app in apps.get_app_configs():
+                try:
+                    module = '%s.%s' % (app.name, mapping_module)
+                    imported_module = importlib.import_module(module)
+                    clsmembers = inspect.getmembers(imported_module, lambda member: inspect.isclass(member) and issubclass(member, Indexable))
+                    for name, cls in clsmembers:
+                        if module_only and cls.__module__ != module:
+                            logger.debug('Skipping registration of %s.%s (defined outside %s)', cls.__module__, name, module)
+                            continue
+                        register(cls, app_label=app.label)
+                except ImportError:
+                    pass
