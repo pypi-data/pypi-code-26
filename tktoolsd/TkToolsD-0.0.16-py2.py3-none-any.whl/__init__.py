@@ -1,0 +1,9 @@
+# -*- coding:utf-8 -*- 
+# Date: 2018-03-07 16:22:37
+# Author: dekiven
+import os
+
+__version__ = '0.0.16'
+
+# import CommonWidgets
+# help(CommonWidgets)
