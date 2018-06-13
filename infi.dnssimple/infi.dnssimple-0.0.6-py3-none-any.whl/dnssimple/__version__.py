@@ -1,0 +1,11 @@
+__version__ = "0.0.6"
+__git_commiter_name__ = "Guy Rozendorn"
+__git_commiter_email__ = "guy@rzn.co.il"
+__git_branch__ = u'develop'
+__git_remote_tracking_branch__ = u'origin/develop'
+__git_remote_url__ = u'git@git.infinidat.com:host-opensource/infi.dnssimple.git'
+__git_head_hash__ = '762ad5c9cd2cdf1cab71cd5e9be8bd7d9aa3b267'
+__git_head_subject__ = u'Finished Release v0.0.6'
+__git_head_message__ = u'* develop:\n  SPTL-1783 Using DNSimple v2 API\n  prio and ttl\n  TRIVIAL dump command\n  TRIVIAL delete command'
+__git_dirty_diff__ = u''
+__git_commit_date__ = '2018-06-13 16:43:28'
