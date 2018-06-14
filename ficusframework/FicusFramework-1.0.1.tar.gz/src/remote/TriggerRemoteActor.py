@@ -1,0 +1,42 @@
+from flask import request, jsonify
+from munch import Munch
+
+from app import app
+from schedule import TriggerActor
+
+
+@app.route('/remote/ta-service/<int:jobId>', methods=['DELETE'])
+def stop_job(jobId):
+    return None
+
+
+@app.route('/remote/ta-service', methods=['POST'])
+def handle_trigger():
+    taskParam = request.json
+    body = Munch(taskParam)
+    print(f"触发了一次请求:{taskParam}")
+    """
+    {
+  "actorBlockStrategy": "SERIAL_EXECUTION",
+  "actorHandler": "multipleArticleMessageCEHandler",
+  "actorParams": {
+    "code_": "locus.multiple.article.message.ce-0",
+    "projectCode_": "LOCUS",
+    "site_": "S1"
+  },
+  "jobId": 20081,
+  "jobType": "BEAN",
+  "limitTimes": -1,
+  "logId": 55,
+  "scriptJobRemark": "None",
+  "scriptJobSource": "None",
+  "updateTime": "2018-02-04 10:35:39"
+}
+    """
+
+    return TriggerActor.handle_trigger(body).to_json()
+
+
+@app.route('/remote/ta-service/ping', methods=['GET'])
+def ping():
+    return jsonify("pong")
