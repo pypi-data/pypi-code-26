@@ -1,0 +1,39 @@
+#
+# Copyright 2018 Russell Smiley
+#
+# This file is part of registerMap.
+#
+# registerMap is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# registerMap is distributed in the hope that it will be useful
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with registerMap.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+from registerMap.export.base import RegisterMapBase
+
+from .field import Field
+from .memory import Memory
+from .module import Module
+from .register import Register
+
+
+C_TYPE_CONFIGURATION = {
+    'field' : Field,
+    'memory' : Memory,
+    'module' : Module,
+    'register' : Register,
+}
+
+
+class RegisterMap( RegisterMapBase ) :
+
+    def __init__( self, registerMapName, registerMap ) :
+        super().__init__( registerMapName, registerMap, C_TYPE_CONFIGURATION )
