@@ -1,0 +1,5 @@
+__version__ = '0.0.13'
+__description__ = 'Creaturecast Handlers'
+__author__ = 'Paxton Gerrish'
+__email__ = 'creaturecastlabs@gmail.com'
+__url__ = 'https://github.com/Paxtongerrish/creaturecast_handlers.git'
