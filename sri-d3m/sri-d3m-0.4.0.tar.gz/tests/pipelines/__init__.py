@@ -1,0 +1,13 @@
+# Import all the pipelines here so we can dyntamically iterate for tests.
+
+from .base_pipeline import BasePipeline
+
+from .baseline_mean import MeanBaselinePipeline
+from .collaborative_filtering import CollaborativeFilteringParserPipeline
+from .collaborative_filtering_link_prediction import CollaborativeFilteringLinkPredictionPipeline
+from .collaborative_filtering_transform import CollaborativeFilteringTransformPipeline
+from .collaborative_filtering_transform_lp import CollaborativeFilteringTransformLPPipeline
+from .graph_matching import GraphMatchingParserPipeline
+from .graph_matching_link_prediction import GraphMatchingLinkPredictionPipeline
+from .graph_matching_transform import GraphMatchingTransformPipeline
+from .graph_matching_transform_lp import GraphMatchingTransformLPPipeline
