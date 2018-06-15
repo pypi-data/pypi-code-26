@@ -1,0 +1,8 @@
+UP = 0
+DOWN = UP + 1
+LEFT = DOWN + 1
+RIGHT = LEFT + 1
+NO_OP = RIGHT + 1
+ACTIONS = [UP, DOWN, LEFT, RIGHT, NO_OP]
+QUIT = NO_OP + 1  # Meta-action
+LIST_CONTROLS = QUIT + 1  # Meta-action
