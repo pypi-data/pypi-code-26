@@ -1,0 +1,19 @@
+import setuptools
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+setuptools.setup(
+    name="hydroinform",
+    version="0.0.4",
+    author="Jan Gregersen and Jacob Gudbjerg",
+    author_email="jacobgudbjerg@gmail.com",
+    description="A steady-state stream model and python access to DFS-files",
+    url="https://hydroinform.dk",
+    packages=setuptools.find_packages(include=['hydroinform']),
+    classifiers=(
+        "Programming Language :: Python",
+        "License :: OSI Approved :: GNU General Public License (GPL)",
+        "Operating System :: OS Independent",
+    ),
+)
